@@ -91,8 +91,3 @@ Fetches or generates a personalized workout plan for a user tapping an NFC card 
   "tip": "Keep elbows slightly tucked and avoid deep shoulder flare."
 }
 ```
-
----
-
-## 📄 License
-This project is open-source and available under the [MIT License](LICENSE).
