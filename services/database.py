@@ -1,12 +1,17 @@
+import os
 import sqlite3
 from datetime import date
 from typing import Optional, List, Dict, Any
 
+# Root directory of the smart_gym project
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DEFAULT_DB_PATH = os.path.join(BASE_DIR, "gym.db")
+
 
 class GymDatabase:
 
-    def __init__(self, db_name="gym.db"):
-        self.db_name = db_name
+    def __init__(self, db_name: Optional[str] = None):
+        self.db_name = db_name if db_name is not None else DEFAULT_DB_PATH
         # check_same_thread=False is required for FastAPI / multi-threaded environments
         self.conn = sqlite3.connect(self.db_name, check_same_thread=False)
         # Enables accessing columns by name like dictionary keys
@@ -60,7 +65,7 @@ class GymDatabase:
                 weight_kg REAL NOT NULL,
                 sets_completed INTEGER NOT NULL,
                 reps_completed INTEGER NOT NULL,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                timestamp DATETIME DEFAULT (datetime('now', 'localtime')),
                 FOREIGN KEY (user_id) REFERENCES users(user_id),
                 FOREIGN KEY (station_id) REFERENCES stations(station_id)
             );
@@ -148,7 +153,7 @@ class GymDatabase:
         try:
             self.cursor.execute("""
                 UPDATE stations 
-                SET status = ?, current_user_id = ?, last_active = CURRENT_TIMESTAMP
+                SET status = ?, current_user_id = ?, last_active = datetime('now', 'localtime')
                 WHERE station_id = ?
             """, (status, user_id, station_id))
             self.conn.commit()
@@ -157,9 +162,38 @@ class GymDatabase:
             print(f"Database Error (update_station_status): {e}")
 
     def get_all_stations(self) -> List[Dict[str, Any]]:
-        """Return all gym stations and their current active states."""
-        self.cursor.execute("SELECT * FROM stations")
+        """Return all gym stations and their current active states, including current user details."""
+        self.cursor.execute("""
+            SELECT 
+                s.station_id,
+                s.station_name,
+                s.target_muscles,
+                s.status,
+                s.current_user_id,
+                s.last_active,
+                u.name AS current_user_name,
+                u.fitness_level AS current_user_level,
+                u.target_goal AS current_user_goal
+            FROM stations s
+            LEFT JOIN users u ON s.current_user_id = u.user_id
+            ORDER BY s.station_id ASC
+        """)
         return [dict(row) for row in self.cursor.fetchall()]
+
+    def reset_station_status(self, station_id: str) -> bool:
+        """Reset station status back to 'idle' and clear current user."""
+        try:
+            self.cursor.execute("""
+                UPDATE stations 
+                SET status = 'idle', current_user_id = NULL
+                WHERE station_id = ?
+            """, (station_id,))
+            self.conn.commit()
+            return True
+        except sqlite3.Error as e:
+            self.conn.rollback()
+            print(f"Database Error (reset_station_status): {e}")
+            return False
 
     # ==========================================
     # WORKOUT HISTORY & AI CONTEXT
@@ -176,6 +210,48 @@ class GymDatabase:
         """, (user_id, station_id))
         row = self.cursor.fetchone()
         return dict(row) if row else None
+    
+    def get_all_users(self) -> List[Dict[str, Any]]:
+        """Retrieve all users ordered by newest first."""
+        self.cursor.execute("SELECT * FROM users ORDER BY user_id DESC")
+        return [dict(row) for row in self.cursor.fetchall()]
+
+    def update_user(
+        self,
+        user_id: int,
+        nfc_uid: str,
+        name: str,
+        fitness_level: str,
+        target_goal: str,
+        injury_note: Optional[str] = None,
+        gender: Optional[str] = None
+    ) -> bool:
+        """Update an existing user's information."""
+        try:
+            self.cursor.execute("""
+                UPDATE users 
+                SET nfc_uid = ?, name = ?, fitness_level = ?, target_goal = ?, injury_note = ?, gender = ?
+                WHERE user_id = ?
+            """, (nfc_uid, name, fitness_level, target_goal, injury_note, gender, user_id))
+            self.conn.commit()
+            return True
+        except sqlite3.Error as e:
+            self.conn.rollback()
+            print(f"Database Error (update_user): {e}")
+            return False
+
+    def delete_user(self, user_id: int) -> bool:
+        """Delete a user and associated cache/history records."""
+        try:
+            self.cursor.execute("DELETE FROM daily_routines_cache WHERE user_id = ?", (user_id,))
+            self.cursor.execute("DELETE FROM workout_history WHERE user_id = ?", (user_id,))
+            self.cursor.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
+            self.conn.commit()
+            return True
+        except sqlite3.Error as e:
+            self.conn.rollback()
+            print(f"Database Error (delete_user): {e}")
+            return False
 
     def log_workout(
         self,

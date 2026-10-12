@@ -1,14 +1,19 @@
-from database import GymDatabase
+import os
+import sys
+
+# เพิ่ม root directory ลงใน sys.path เพื่อให้สามารถเรียกใช้ services ได้
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from services import GymDatabase
 
 
 def seed_mock_data():
     """Seed initial mock data for users, stations, and prior workout history."""
-    db = GymDatabase("gym.db")
+    db = GymDatabase()
 
     print("--- Seeding Gym Database ---")
 
     # 1. Mock Users
-    # Note: Replace these NFC UIDs with your actual NFC card/sticker UIDs when testing hardware
     users_data = [
         {
             "nfc_uid": "04A1B2C3",
@@ -37,7 +42,6 @@ def seed_mock_data():
     ]
 
     for u in users_data:
-        # Check if user already exists to avoid duplicate constraint errors
         existing_user = db.get_user_by_nfc(u["nfc_uid"])
         if not existing_user:
             user_id = db.add_user(
@@ -80,10 +84,8 @@ def seed_mock_data():
         print(f"Registered Station: {s['station_name']} ({s['station_id']})")
 
     # 3. Mock Prior Workout History (For testing Progressive Overload)
-    # Adding historical log for user 'Non' at Chest Press machine
     non_user = db.get_user_by_nfc("04A1B2C3")
     if non_user:
-        # Check if history already exists to prevent duplicate test rows
         last_log = db.get_last_workout(non_user["user_id"], "STATION_CHEST_PRESS")
         if not last_log:
             db.log_workout(

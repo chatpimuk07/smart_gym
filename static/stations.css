@@ -1,0 +1,53 @@
+/* Custom CSS for Smart Gym Station Live Status */
+
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.02);
+  }
+}
+
+.animate-live-pulse {
+  animation: pulse-subtle 2s infinite ease-in-out;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Station Card transitions */
+.station-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.station-card:hover {
+  transform: translateY(-2px);
+}
+
+/* Status Glow Effects */
+.status-idle-glow {
+  box-shadow: 0 0 15px -3px rgba(16, 185, 129, 0.15);
+}
+
+.status-in-use-glow {
+  box-shadow: 0 0 20px -3px rgba(244, 63, 94, 0.2);
+}

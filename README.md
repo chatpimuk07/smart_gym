@@ -18,13 +18,30 @@ A lightweight FastAPI backend designed for microcontrollers (such as ESP32) equi
 
 ```text
 smart_gym/
-├── main.py            # FastAPI entry point & API routes
-├── ai_service.py      # Google Gemini API integration & Pydantic schema
-├── database.py        # SQLite database manager (Users, Stations, History, Cache)
-├── mock_data.py        # Seed script for initial test data
-├── .env.example       # Environment variables template
-├── .gitignore         # Git ignore rules for sensitive & generated files
-└── gym.db             # SQLite database file (created automatically)
+├── services/               # Core services (Database, Gemini AI, NFC Reader)
+│   ├── __init__.py         # Package exports
+│   ├── ai_service.py       # Google Gemini API integration & Pydantic schema
+│   ├── database.py         # SQLite database manager (Users, Stations, History, Cache)
+│   └── nfc_reader.py       # Dynamic USB PN532 hardware reader service
+├── scripts/                # Standalone utilities & test scripts
+│   ├── seed_mock_data.py   # Seed script for initial test data
+│   └── test_nfc.py         # Standalone NFC hardware reader test tool
+├── static/                 # Frontend assets (CSS & JS)
+│   ├── admin.js
+│   ├── stations.js
+│   ├── stations.css
+│   └── style.css
+├── templates/              # HTML templates (Web Dashboards)
+│   ├── admin.html
+│   └── stations.html
+├── esp32/                  # ESP32 firmware source code (PlatformIO)
+│   ├── src/station.ino
+│   └── platformio.ini
+├── main.py                 # FastAPI entry point & API routes
+├── requirements.txt        # Python package dependencies
+├── .env.example            # Environment variables template
+├── .gitignore              # Git ignore rules for sensitive & generated files
+└── gym.db                  # SQLite database file (created automatically)
 ```
 
 ---
@@ -46,23 +63,25 @@ source venv/bin/activate   # On Linux/macOS
 
 ### 3. Install Dependencies
 ```bash
-pip install fastapi uvicorn google-genai pydantic
+pip install -r requirements.txt
 ```
 
 ### 4. Configure Environment Variables
 Copy `.env.example` to `.env` and set your **Google Gemini API Key**:
 ```bash
 cp .env.example .env
-export GEMINI_API_KEY="your_actual_gemini_api_key_here"
+# Edit .env and insert your GEMINI_API_KEY
 ```
 
 ### 5. Seed Initial Mock Data
 ```bash
-python mock_data.py
+python scripts/seed_mock_data.py
 ```
 
 ### 6. Run the FastAPI Server
 ```bash
+python main.py
+# หรือ
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 

@@ -1,0 +1,30 @@
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Custom Table Row Hover */
+.table-row-hover:hover {
+  background-color: rgba(51, 65, 85, 0.4);
+}
+
+/* Scan Input Highlight Flash */
+.scan-success-highlight {
+  border-color: #10b981 !important;
+  background-color: rgba(6, 78, 59, 0.3) !important;
+  transition: all 0.3s ease;
+}

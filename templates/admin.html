@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Gym - Admin Web Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+
+  <div class="max-w-7xl mx-auto px-4 py-8">
+    <header class="flex justify-between items-center mb-8 border-b border-slate-700 pb-4">
+      <div>
+        <h1 class="text-3xl font-extrabold text-blue-400">🏋️‍♂️ Smart Gym Admin</h1>
+        <p class="text-slate-400 text-sm">Manage Member Accounts, NFC Tags & Profiles</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="/stations" class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-medium rounded-lg text-sm shadow transition flex items-center gap-2">
+          <span>⚡</span> ดูสถานะเครื่องเล่น (Station Status)
+        </a>
+        <button onclick="fetchUsers()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-sm transition">
+          🔄 Refresh
+        </button>
+      </div>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      
+      <!-- ฝั่งซ้าย: ฟอร์ม Add / Edit -->
+      <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 h-fit shadow-lg">
+        <h2 id="formTitle" class="text-xl font-bold text-slate-200 mb-4 border-b border-slate-700 pb-2">
+          ➕ Add New Member
+        </h2>
+
+        <form id="userForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
+          <input type="hidden" id="userId">
+
+          <!-- ช่องกรอก NFC พร้อมปุ่ม Live Scan -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="block text-sm font-medium text-slate-300">NFC Tag UID</label>
+              <button type="button" id="scanBtn" onclick="toggleScanMode()" 
+                      class="text-xs px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-medium transition flex items-center gap-1">
+                <span id="scanIcon">📡</span> <span id="scanText">Scan from PN532</span>
+              </button>
+            </div>
+            <div class="relative">
+              <input type="text" id="nfcUid" required placeholder="e.g. 0498943BC82A81"
+                     class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 uppercase font-mono">
+              <span id="scanBadge" class="hidden absolute right-3 top-2 text-xs text-amber-400 animate-pulse font-medium">
+                Waiting for tap...
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-1">Full Name</label>
+            <input type="text" id="name" required placeholder="e.g. Joe"
+                   class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-1">Gender</label>
+              <select id="gender" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-1">Fitness Level</label>
+              <select id="fitnessLevel" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                <option value="Beginner">Beginner</option>
+                <option value="Intermediate">Intermediate</option>
+                <option value="Advanced">Advanced</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-1">Target Goal</label>
+            <input type="text" id="targetGoal" required placeholder="e.g. Hypertrophy / Weight Loss"
+                   class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-1">Injury / Restrictions Note</label>
+            <textarea id="injuryNote" rows="2" placeholder="e.g. Shoulder impingement (Avoid deep press)"
+                      class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"></textarea>
+          </div>
+
+          <div class="pt-2 flex flex-col gap-2">
+            <button type="submit" id="submitBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 rounded-lg text-sm transition">
+              Save Member
+            </button>
+            <button type="button" onclick="resetForm()" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-300 py-2 rounded-lg text-sm transition">
+              Reset Form
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- ฝั่งขวา: ตารางแสดงสมาชิก + ค้นหา -->
+      <div class="lg:col-span-2 bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold text-slate-200">👥 Member List</h2>
+          <input type="text" id="searchInput" oninput="filterUsers()" placeholder="Search name or NFC..."
+                 class="w-64 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500">
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-300">
+            <thead class="bg-slate-900 text-slate-400 uppercase text-xs">
+              <tr>
+                <th class="py-3 px-3">ID</th>
+                <th class="py-3 px-3">NFC UID</th>
+                <th class="py-3 px-3">Name</th>
+                <th class="py-3 px-3">Level</th>
+                <th class="py-3 px-3">Goal</th>
+                <th class="py-3 px-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="userTableBody" class="divide-y divide-slate-700">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    let allUsers = [];
+    let scanPollingInterval = null;
+
+    async function fetchUsers() {
+      try {
+        const res = await fetch('/api/users');
+        allUsers = await res.json();
+        renderTable(allUsers);
+      } catch (err) {
+        alert('Failed to load user list');
+      }
+    }
+
+    function renderTable(users) {
+      const tbody = document.getElementById('userTableBody');
+      tbody.innerHTML = '';
+
+      if (users.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-500">No members registered yet</td></tr>`;
+        return;
+      }
+
+      users.forEach(u => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-750 border-b border-slate-800 transition";
+        tr.innerHTML = `
+          <td class="py-3 px-3 font-mono text-slate-400">#${u.user_id}</td>
+          <td class="py-3 px-3 font-mono text-blue-400 font-semibold">${u.nfc_uid}</td>
+          <td class="py-3 px-3 font-medium text-slate-100">${u.name}</td>
+          <td class="py-3 px-3"><span class="px-2 py-0.5 rounded text-xs bg-slate-700 text-slate-300">${u.fitness_level}</span></td>
+          <td class="py-3 px-3 text-slate-300">${u.target_goal}</td>
+          <td class="py-3 px-3 text-right space-x-2">
+            <button onclick="editUser(${u.user_id})" class="px-2.5 py-1 bg-amber-600/30 text-amber-400 hover:bg-amber-600/50 rounded text-xs transition">Edit</button>
+            <button onclick="deleteUser(${u.user_id})" class="px-2.5 py-1 bg-red-600/30 text-red-400 hover:bg-red-600/50 rounded text-xs transition">Delete</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function filterUsers() {
+      const q = document.getElementById('searchInput').value.toLowerCase();
+      const filtered = allUsers.filter(u => 
+        u.name.toLowerCase().includes(q) || u.nfc_uid.toLowerCase().includes(q)
+      );
+      renderTable(filtered);
+    }
+
+    function editUser(userId) {
+      const user = allUsers.find(u => u.user_id === userId);
+      if (!user) return;
+
+      document.getElementById('userId').value = user.user_id;
+      document.getElementById('nfcUid').value = user.nfc_uid;
+      document.getElementById('name').value = user.name;
+      document.getElementById('gender').value = user.gender || 'Male';
+      document.getElementById('fitnessLevel').value = user.fitness_level;
+      document.getElementById('targetGoal').value = user.target_goal;
+      document.getElementById('injuryNote').value = user.injury_note || '';
+
+      document.getElementById('formTitle').innerText = `✏️ Edit Member (#${user.user_id})`;
+      document.getElementById('submitBtn').innerText = 'Update Member';
+      document.getElementById('submitBtn').className = 'w-full bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2 rounded-lg text-sm transition';
+    }
+
+    function resetForm() {
+      document.getElementById('userForm').reset();
+      document.getElementById('userId').value = '';
+      document.getElementById('formTitle').innerText = '➕ Add New Member';
+      document.getElementById('submitBtn').innerText = 'Save Member';
+      document.getElementById('submitBtn').className = 'w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 rounded-lg text-sm transition';
+      stopScanning();
+    }
+
+    async function handleFormSubmit(e) {
+      e.preventDefault();
+      const userId = document.getElementById('userId').value;
+      const payload = {
+        nfc_uid: document.getElementById('nfcUid').value.trim().toUpperCase(),
+        name: document.getElementById('name').value.trim(),
+        gender: document.getElementById('gender').value,
+        fitness_level: document.getElementById('fitnessLevel').value,
+        target_goal: document.getElementById('targetGoal').value.trim(),
+        injury_note: document.getElementById('injuryNote').value.trim() || null
+      };
+
+      try {
+        let res;
+        if (userId) {
+          res = await fetch(`/api/users/${userId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        } else {
+          res = await fetch('/api/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        }
+
+        if (!res.ok) {
+          const data = await res.json();
+          alert('Error: ' + data.detail);
+          return;
+        }
+
+        resetForm();
+        fetchUsers();
+      } catch (err) {
+        alert('Network request failed');
+      }
+    }
+
+    async function deleteUser(userId) {
+      if (!confirm(`Are you sure you want to delete member #${userId}?`)) return;
+      try {
+        const res = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+        if (res.ok) {
+          fetchUsers();
+          resetForm();
+        } else {
+          alert('Failed to delete member');
+        }
+      } catch (err) {
+        alert('Network error');
+      }
+    }
+
+    // --- ฟังก์ชัน Live Scan จาก PN532 (On-Demand + Auto Port Scan) ---
+    let isScanning = false;
+    let abortController = null;
+
+    async function toggleScanMode() {
+      const scanBtn = document.getElementById('scanBtn');
+      const scanText = document.getElementById('scanText');
+      const scanBadge = document.getElementById('scanBadge');
+      const nfcInput = document.getElementById('nfcUid');
+
+      if (isScanning) {
+        if (abortController) abortController.abort();
+        stopScanning();
+        return;
+      }
+
+      isScanning = true;
+      abortController = new AbortController();
+
+      nfcInput.value = '';
+      nfcInput.placeholder = '🔍 Scanning USB ports & waiting for card...';
+
+      scanBtn.className = 'text-xs px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded font-medium transition flex items-center gap-1';
+      scanText.innerText = 'Cancel Scan';
+      scanBadge.classList.remove('hidden');
+
+      console.log('📡 [NFC Live Scan] Triggering /api/trigger-scan...');
+
+      try {
+        const res = await fetch('/api/trigger-scan', {
+          method: 'POST',
+          signal: abortController.signal
+        });
+        const data = await res.json();
+        console.log('🎉 [NFC Scan Response]:', data);
+
+        if (data.debug) {
+          console.info(`👉 Tested Ports:`, data.debug.candidate_ports);
+          console.info(`🔌 Connected Port: ${data.debug.connected_port || 'None'} (${data.debug.baudrate || '-'} baud)`);
+          if (data.debug.error) console.warn(`⚠️ Warning/Error:`, data.debug.error);
+        }
+
+        if (data.status === 'success' && data.nfc_uid) {
+          nfcInput.value = data.nfc_uid;
+          nfcInput.classList.add('border-emerald-500', 'bg-emerald-950/30');
+          setTimeout(() => {
+            nfcInput.classList.remove('border-emerald-500', 'bg-emerald-950/30');
+          }, 2000);
+        } else {
+          const portMsg = data.debug && data.debug.connected_port ? ` on ${data.debug.connected_port}` : '';
+          nfcInput.placeholder = `Timeout${portMsg} (No card tapped). Try again.`;
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error('[NFC Scan Error]:', err);
+          nfcInput.placeholder = 'Connection error. Check server.';
+        }
+      } finally {
+        stopScanning();
+      }
+    }
+
+    function stopScanning() {
+      isScanning = false;
+      const scanBtn = document.getElementById('scanBtn');
+      const scanText = document.getElementById('scanText');
+      const scanBadge = document.getElementById('scanBadge');
+      const nfcInput = document.getElementById('nfcUid');
+
+      if (scanBtn) {
+        scanBtn.className = 'text-xs px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-medium transition flex items-center gap-1';
+        scanText.innerText = 'Scan from PN532';
+      }
+      if (scanBadge) scanBadge.classList.add('hidden');
+      if (nfcInput && !nfcInput.value) {
+        nfcInput.placeholder = 'e.g. 0498943BC82A81';
+      }
+    }
+
+    fetchUsers();
+
+  </script>
+</body>
+</html>

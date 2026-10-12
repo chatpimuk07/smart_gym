@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Gym - Station Live Status</title>
+  <!-- Tailwind CSS Framework -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Custom Station Status CSS -->
+  <link rel="stylesheet" href="/static/stations.css">
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+
+  <div class="max-w-7xl mx-auto px-4 py-8">
+    
+    <!-- Top Header -->
+    <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 border-b border-slate-700 pb-5">
+      <div>
+        <div class="flex items-center gap-3">
+          <h1 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">
+            ⚡ Station Live Status
+          </h1>
+          <span id="liveIndicator" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            LIVE
+          </span>
+        </div>
+        <p class="text-slate-400 text-sm mt-1">
+          ระบบตรวจสอบสถานะความว่างของเครื่องเล่นฟิตเนสแบบเรียลไทม์
+        </p>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center flex-wrap gap-3">
+        <a href="/admin" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-sm font-medium transition flex items-center gap-2">
+          <span>👥</span> ไปหน้า Admin Dashboard
+        </a>
+        <button onclick="fetchStations()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-sm font-medium transition flex items-center gap-2">
+          <span>🔄</span> รีเฟรช
+        </button>
+      </div>
+    </header>
+
+    <!-- Overview Stats Counter -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+      <!-- Total Stations -->
+      <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-5 shadow-lg flex items-center justify-between">
+        <div>
+          <p class="text-xs uppercase tracking-wider font-semibold text-slate-400">เครื่องเล่นทั้งหมด</p>
+          <p id="totalCount" class="text-3xl font-bold text-white mt-1">-</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-2xl text-blue-400">
+          🏋️‍♂️
+        </div>
+      </div>
+
+      <!-- Available Stations -->
+      <div class="bg-slate-800/80 border border-emerald-900/50 rounded-xl p-5 shadow-lg flex items-center justify-between">
+        <div>
+          <p class="text-xs uppercase tracking-wider font-semibold text-emerald-400">เครื่องว่าง (พร้อมใช้)</p>
+          <p id="availableCount" class="text-3xl font-bold text-emerald-400 mt-1">-</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-2xl text-emerald-400">
+          ✅
+        </div>
+      </div>
+
+      <!-- In Use Stations -->
+      <div class="bg-slate-800/80 border border-rose-900/50 rounded-xl p-5 shadow-lg flex items-center justify-between">
+        <div>
+          <p class="text-xs uppercase tracking-wider font-semibold text-rose-400">กำลังใช้งาน (ไม่ว่าง)</p>
+          <p id="inUseCount" class="text-3xl font-bold text-rose-400 mt-1">-</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-2xl text-rose-400">
+          ⏳
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter & Search Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <!-- Status Filter Tabs -->
+      <div class="flex items-center gap-1.5 bg-slate-800/90 p-1 rounded-xl border border-slate-700 w-fit">
+        <button onclick="setFilter('all')" id="filter-all" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition bg-blue-600 text-white">
+          ทั้งหมด
+        </button>
+        <button onclick="setFilter('idle')" id="filter-idle" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition text-slate-300 hover:text-white">
+          🟢 เฉพาะเครื่องว่าง
+        </button>
+        <button onclick="setFilter('in_use')" id="filter-in_use" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition text-slate-300 hover:text-white">
+          🔴 กำลังใช้งาน
+        </button>
+      </div>
+
+      <!-- Search Input -->
+      <div class="relative w-full sm:w-72">
+        <input type="text" id="searchInput" oninput="renderStations()" placeholder="ค้นหาชื่อเครื่อง หรือ กล้ามเนื้อ..."
+               class="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-emerald-500 placeholder-slate-500">
+        <span class="absolute left-3 top-2.5 text-slate-400 text-sm">🔍</span>
+      </div>
+    </div>
+
+    <!-- Stations Grid -->
+    <div id="stationsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div class="col-span-full py-16 text-center text-slate-500">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-400 mb-3"></div>
+        <p>กำลังโหลดข้อมูลเครื่องเล่น...</p>
+      </div>
+    </div>
+
+    <!-- Auto-refresh status footnote -->
+    <footer class="mt-12 text-center border-t border-slate-800 pt-6 text-slate-500 text-xs flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div>
+        <span>ระบบจะอัปเดตสถานะอัตโนมัติทุก 3 วินาที</span>
+        <span id="lastUpdatedTime" class="ml-2 text-slate-400"></span>
+      </div>
+      <div class="text-slate-400">
+        Smart Gym System • Connected to SQLite & Gemini Hub
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Custom Station Status JavaScript Controller -->
+  <script src="/static/stations.js"></script>
+</body>
+</html>
