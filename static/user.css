@@ -1,0 +1,82 @@
+/**
+ * Smart Gym - Member Portal CSS
+ * ปรับแต่งเอฟเฟกต์ Glassmorphism, Animation, และ Toast Notifications
+ */
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Glassmorphism Card Effect */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(51, 65, 85, 0.6);
+}
+
+/* AI Glow Card */
+.ai-card-glow {
+  position: relative;
+}
+
+.ai-card-glow::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(168, 85, 247, 0.15), rgba(99, 102, 241, 0.05));
+  border-radius: 1.5rem;
+  z-index: -1;
+}
+
+/* Toast Animations */
+@keyframes slideInUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.toast {
+  animation: slideInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.toast.hiding {
+  animation: fadeOut 0.25s forwards;
+}
+
+/* Responsive tweaks */
+@media (max-width: 640px) {
+  .ai-routine-metric {
+    font-size: 0.85rem;
+  }
+}

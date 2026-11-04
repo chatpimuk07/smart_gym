@@ -1,4 +1,5 @@
 import os
+import json
 from typing import Optional
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
@@ -44,12 +45,44 @@ class RoutineRequest(BaseModel):
 
 
 class UserPayload(BaseModel):
-    nfc_uid: str
+    nfc_uid: Optional[str] = None
     name: str
     fitness_level: str
     target_goal: str
     injury_note: Optional[str] = None
     gender: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+
+
+class RegisterPayload(BaseModel):
+    name: str
+    username: str
+    password: str
+    fitness_level: str
+    target_goal: str
+    injury_note: Optional[str] = None
+    gender: Optional[str] = None
+
+
+class LoginPayload(BaseModel):
+    username: str
+    password: str
+
+
+class ChangePasswordPayload(BaseModel):
+    user_id: int
+    old_password: str
+    new_password: str
+
+
+class LogWorkoutPayload(BaseModel):
+    user_id: int
+    station_id: str
+    exercise_name: str
+    weight_kg: float
+    sets: int
+    reps: int
 
 
 from fastapi.concurrency import run_in_threadpool
@@ -91,7 +124,22 @@ def get_routine(req: RoutineRequest):
     if not station:
         raise HTTPException(status_code=404, detail="Station not found")
 
-    # อัปเดตสถานะของเครื่องเล่นเป็น in_use
+    # 1. ตรวจสอบว่าผู้ใช้คนเดิมแตะบัตรซ้ำที่เครื่องที่กำลังเล่นอยู่หรือไม่ (Tap to Finish / Check-out)
+    if station.get("status") == "in_use" and station.get("current_user_id") == user["user_id"]:
+        db.reset_station_status(req.station_id)
+        finish_response = {
+            "status": "session_completed",
+            "message": f"คุณ {user.get('name', 'Member')} เล่นเครื่อง {station.get('station_name', '')} เสร็จสิ้นแล้ว สถานะเครื่องเปลี่ยนเป็นว่างเรียบร้อย",
+            "station_id": req.station_id,
+            "user": user.get("name", "Member"),
+            "exercise": station.get("station_name", "Machine Workout"),
+            "target": "Session Finished",
+            "weight": "Done",
+            "tip": "ทำได้ดีมากครับ! กรุณาเช็ดทำความสะอาดเครื่องเล่นสำหรับสมาชิกท่านถัดไป"
+        }
+        return Response(content=json.dumps(finish_response, ensure_ascii=False), media_type="application/json")
+
+    # 2. ผู้ใช้แตะบัตรเพื่อเริ่มเล่น (Start Workout / Check-in)
     db.update_station_status(req.station_id, "in_use", user["user_id"])
 
     # ตรวจสอบ Cache ในวันปัจจุบันก่อน
@@ -121,26 +169,28 @@ def list_users():
 
 @app.post("/api/users")
 def create_user(payload: UserPayload):
-    """เพิ่มสมาชิกใหม่ลงฐานข้อมูล"""
+    """เพิ่มสมาชิกใหม่ลงฐานข้อมูล (Admin)"""
     user_id = db.add_user(
         nfc_uid=payload.nfc_uid,
         name=payload.name,
         fitness_level=payload.fitness_level,
         target_goal=payload.target_goal,
         injury_note=payload.injury_note,
-        gender=payload.gender
+        gender=payload.gender,
+        username=payload.username,
+        password=payload.password
     )
     if not user_id:
         raise HTTPException(
             status_code=400,
-            detail="Failed to add user (NFC UID might already exist)"
+            detail="Failed to add user (NFC UID or Username might already exist)"
         )
     return {"status": "success", "user_id": user_id}
 
 
 @app.put("/api/users/{user_id}")
 def update_user_info(user_id: int, payload: UserPayload):
-    """แก้ไขข้อมูลสมาชิกที่มีอยู่"""
+    """แก้ไขข้อมูลสมาชิกที่มีอยู่ (Admin)"""
     success = db.update_user(
         user_id=user_id,
         nfc_uid=payload.nfc_uid,
@@ -148,7 +198,9 @@ def update_user_info(user_id: int, payload: UserPayload):
         fitness_level=payload.fitness_level,
         target_goal=payload.target_goal,
         injury_note=payload.injury_note,
-        gender=payload.gender
+        gender=payload.gender,
+        username=payload.username,
+        password=payload.password
     )
     if not success:
         raise HTTPException(status_code=400, detail="Failed to update user")
@@ -207,6 +259,103 @@ def serve_stations_page():
         return f.read()
 
 
+@app.get("/user", response_class=HTMLResponse)
+def serve_user_portal():
+    """แสดงผลหน้า Member Portal สำหรับผู้ใช้งานทั่วไป (HTML)"""
+    html_path = os.path.join(os.path.dirname(__file__), "templates", "user.html")
+    if not os.path.exists(html_path):
+        raise HTTPException(status_code=404, detail="User portal template not found")
+    with open(html_path, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+# ---------------- MEMBER AUTH & DASHBOARD API ----------------
+@app.post("/api/user/register")
+def user_register(payload: RegisterPayload):
+    """สมาชิกใหม่สมัครสมาชิกเองผ่านหน้าเว็บ"""
+    clean_username = payload.username.strip().lower()
+    if len(clean_username) < 3:
+        raise HTTPException(status_code=400, detail="Username ต้องมีความยาวอย่างน้อย 3 ตัวอักษร")
+    if len(payload.password) < 4:
+        raise HTTPException(status_code=400, detail="รหัสผ่านต้องมีความยาวอย่างน้อย 4 ตัวอักษร")
+
+    user_id = db.add_user(
+        nfc_uid="",  # จะสร้างเป็น PENDING_XXXX ให้อัตโนมัติ เพื่อรอมาผูกบัตรที่ยิม
+        name=payload.name,
+        fitness_level=payload.fitness_level,
+        target_goal=payload.target_goal,
+        injury_note=payload.injury_note,
+        gender=payload.gender,
+        username=clean_username,
+        password=payload.password
+    )
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Username นี้มีผู้ใช้งานแล้ว หรือข้อมูลไม่ถูกต้อง")
+    user = db.get_user_by_id(user_id)
+    return {"status": "success", "user": user}
+
+
+@app.post("/api/user/login")
+def user_login(payload: LoginPayload):
+    """เข้าสู่ระบบด้วย Username & Password สำหรับสมาชิก"""
+    user = db.authenticate_user(payload.username, payload.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง")
+    return {"status": "success", "user": user}
+
+
+@app.post("/api/user/change-password")
+def change_user_password_endpoint(payload: ChangePasswordPayload):
+    """สมาชิกเปลี่ยนรหัสผ่านของตนเอง"""
+    success, msg = db.change_user_password(
+        user_id=payload.user_id,
+        old_password=payload.old_password,
+        new_password=payload.new_password
+    )
+    if not success:
+        raise HTTPException(status_code=400, detail=msg)
+    return {"status": "success", "message": msg}
+
+
+@app.get("/api/user/{user_id}/summary")
+def get_user_summary_endpoint(user_id: int):
+    """ดึงข้อมูลโปรไฟล์ แผนฝึก AI วันนี้ และประวัติย่อของสมาชิก"""
+    summary = db.get_user_summary(user_id)
+    if not summary:
+        raise HTTPException(status_code=404, detail="User not found")
+    return summary
+
+
+@app.get("/api/user/{user_id}/history")
+def get_user_history_endpoint(user_id: int, limit: int = 50):
+    """ดึงประวัติการออกกำลังกายทั้งหมดของสมาชิก"""
+    return db.get_user_workout_history(user_id, limit=limit)
+
+
+@app.post("/api/user/log-workout")
+def log_user_workout_endpoint(payload: LogWorkoutPayload):
+    """สมาชิกบันทึกผลการออกกำลังกายจริงหลังเล่นเสร็จ"""
+    success = db.log_workout(
+        user_id=payload.user_id,
+        station_id=payload.station_id,
+        exercise_name=payload.exercise_name,
+        weight_kg=payload.weight_kg,
+        sets=payload.sets,
+        reps=payload.reps
+    )
+    if not success:
+        raise HTTPException(status_code=400, detail="Failed to log workout session")
+    return {"status": "success"}
+
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    app_dir = os.path.dirname(os.path.abspath(__file__))
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        reload_dirs=[app_dir],
+        reload_excludes=["venv", ".venv", ".git", "__pycache__", "esp32"]
+    )

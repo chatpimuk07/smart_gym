@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="th" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Gym - Member Portal</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & Prompt -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Custom User CSS -->
+  <link rel="stylesheet" href="/static/user.css">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-['Prompt',sans-serif] selection:bg-indigo-500 selection:text-white pb-16">
+
+  <!-- Navbar -->
+  <header class="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-md border-b border-slate-800">
+    <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white font-bold text-xl">
+          🏋️
+        </div>
+        <div>
+          <span class="font-bold text-lg tracking-tight bg-gradient-to-r from-white via-indigo-100 to-indigo-300 bg-clip-text text-transparent">
+            SMART GYM
+          </span>
+          <span class="text-xs px-2 py-0.5 ml-2 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-medium">
+            Member Portal
+          </span>
+        </div>
+      </div>
+
+      <!-- User Nav State -->
+      <div id="navUserArea" class="flex items-center gap-3">
+        <!-- Will be populated by JS -->
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-6xl mx-auto px-4 pt-6">
+
+    <!-- ========================================== -->
+    <!-- SECTION 1: AUTH SECTION (Login & Register) -->
+    <!-- ========================================== -->
+    <section id="loginSection" class="min-h-[75vh] flex items-center justify-center py-8">
+      <div class="w-full max-w-lg bg-slate-900/90 border border-slate-800/80 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-indigo-950/40 backdrop-blur-xl relative overflow-hidden">
+        
+        <!-- Background Glow Deco -->
+        <div class="absolute -top-24 -right-24 w-48 h-48 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-violet-600/20 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="text-center mb-6 relative">
+          <div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-violet-500/10 border border-indigo-500/30 flex items-center justify-center text-3xl shadow-inner">
+            🏋️
+          </div>
+          <h1 class="text-2xl font-bold text-white tracking-tight">SMART GYM PORTAL</h1>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1">
+            เข้าถึงตารางฝึก AI อัจฉริยะและบันทึกความก้าวหน้าของคุณ
+          </p>
+        </div>
+
+        <!-- Auth Tabs: Login vs Register -->
+        <div class="flex p-1 bg-slate-800/80 rounded-2xl border border-slate-700/60 mb-6">
+          <button 
+            type="button" 
+            id="tabLoginBtn" 
+            onclick="switchAuthTab('login')" 
+            class="flex-1 py-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5 bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+          >
+            <span>🔑</span>
+            <span>เข้าสู่ระบบ</span>
+          </button>
+          <button 
+            type="button" 
+            id="tabRegisterBtn" 
+            onclick="switchAuthTab('register')" 
+            class="flex-1 py-2 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5 text-slate-400 hover:text-slate-200"
+          >
+            <span>📝</span>
+            <span>สมัครสมาชิกใหม่</span>
+          </button>
+        </div>
+
+        <!-- ================= LOGIN FORM ================= -->
+        <form id="loginForm" class="space-y-4 relative" onsubmit="handleLogin(event)">
+          <div>
+            <label for="usernameInput" class="block text-xs font-medium text-slate-300 mb-1.5">
+              ชื่อผู้ใช้งาน (Username)
+            </label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500 text-sm">👤</span>
+              <input 
+                type="text" 
+                id="usernameInput" 
+                required 
+                placeholder="เช่น pluem, non, sarah"
+                class="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+              >
+            </div>
+          </div>
+
+          <div>
+            <label for="passwordInput" class="block text-xs font-medium text-slate-300 mb-1.5">
+              รหัสผ่าน (Password)
+            </label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500 text-sm">🔑</span>
+              <input 
+                type="password" 
+                id="passwordInput" 
+                required 
+                placeholder="กรอกรหัสผ่าน (เริ่มต้น 1234)"
+                class="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl pl-10 pr-10 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+              >
+              <button 
+                type="button" 
+                onclick="togglePasswordVisibility('passwordInput')"
+                class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 text-xs transition"
+                title="แสดง/ซ่อนรหัสผ่าน"
+              >
+                👁️
+              </button>
+            </div>
+          </div>
+
+          <div id="loginErrorMsg" class="hidden p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
+            <span>⚠️</span>
+            <span id="loginErrorText">ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</span>
+          </div>
+
+          <button 
+            type="submit" 
+            id="loginSubmitBtn"
+            class="w-full py-3 px-4 rounded-xl font-semibold text-sm bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-lg shadow-indigo-600/30 transition duration-200 flex items-center justify-center gap-2"
+          >
+            <span>เข้าสู่ระบบ</span>
+            <span>➔</span>
+          </button>
+
+          <!-- Quick Accounts Tip for Demo -->
+          <div class="mt-6 pt-5 border-t border-slate-800/80 text-xs text-slate-400">
+            <p class="font-medium text-slate-300 mb-2 flex items-center gap-1.5">
+              <span>💡</span> บัญชีทดสอบเริ่มต้น (รหัสผ่าน: <code class="bg-slate-800 text-indigo-300 px-1 py-0.5 rounded font-mono">1234</code>)
+            </p>
+            <div class="flex flex-wrap gap-1.5">
+              <button type="button" onclick="fillLogin('pluem', '1234')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] transition">pluem</button>
+              <button type="button" onclick="fillLogin('non', '1234')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] transition">non</button>
+              <button type="button" onclick="fillLogin('sarah', '1234')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] transition">sarah</button>
+              <button type="button" onclick="fillLogin('mike', '1234')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] transition">mike</button>
+            </div>
+          </div>
+        </form>
+
+        <!-- ================= REGISTER FORM ================= -->
+        <form id="registerForm" class="hidden space-y-3.5 relative" onsubmit="handleRegister(event)">
+          <div>
+            <label for="regName" class="block text-xs font-medium text-slate-300 mb-1">
+              ชื่อ-นามสกุล <span class="text-rose-400">*</span>
+            </label>
+            <input 
+              type="text" 
+              id="regName" 
+              required 
+              placeholder="เช่น ภาคภูมิ สุขใจ"
+              oninput="autoSuggestRegUsername()"
+              class="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label for="regUsername" class="block text-xs font-medium text-slate-300 mb-1">
+                ชื่อผู้ใช้ (Username) <span class="text-rose-400">*</span>
+              </label>
+              <input 
+                type="text" 
+                id="regUsername" 
+                required 
+                placeholder="เช่น pakpoom"
+                class="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+              >
+            </div>
+
+            <div>
+              <label for="regGender" class="block text-xs font-medium text-slate-300 mb-1">
+                เพศ
+              </label>
+              <select 
+                id="regGender" 
+                class="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="Male">ชาย (Male)</option>
+                <option value="Female">หญิง (Female)</option>
+                <option value="Other">อื่นๆ / ไม่ระบุ</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label for="regPassword" class="block text-xs font-medium text-slate-300 mb-1">
+                รหัสผ่าน (อย่างน้อย 4 ตัว) <span class="text-rose-400">*</span>
+              </label>
+              <input 
+                type="password" 
+                id="regPassword" 
+                required 
+                minlength="4"
+                placeholder="ตั้งรหัสผ่าน"
+                class="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+            </div>
+
+            <div>
+              <label for="regConfirmPassword" class="block text-xs font-medium text-slate-300 mb-1">
+                ยืนยันรหัสผ่าน <span class="text-rose-400">*</span>
+              </label>
+              <input 
+                type="password" 
+                id="regConfirmPassword" 
+                required 
+                minlength="4"
+                placeholder="พิมพ์อีกครั้ง"
+                class="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label for="regFitnessLevel" class="block text-xs font-medium text-slate-300 mb-1">
+                ระดับความฟิต <span class="text-rose-400">*</span>
+              </label>
+              <select 
+                id="regFitnessLevel" 
+                required 
+                class="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="Beginner">Beginner (เพิ่งเริ่มเล่น)</option>
+                <option value="Intermediate">Intermediate (ออกกำลังกายสม่ำเสมอ)</option>
+                <option value="Advanced">Advanced (ระดับนักกีฬา/ชำนาญ)</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="regTargetGoal" class="block text-xs font-medium text-slate-300 mb-1">
+                เป้าหมายการฝึก <span class="text-rose-400">*</span>
+              </label>
+              <input 
+                type="text" 
+                id="regTargetGoal" 
+                required 
+                placeholder="เช่น ลดไขมัน, สร้างกล้ามเนื้อ"
+                class="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+            </div>
+          </div>
+
+          <div>
+            <label for="regInjuryNote" class="block text-xs font-medium text-slate-300 mb-1">
+              ข้อจำกัดทางร่างกาย / บาดเจ็บ (ถ้ามี)
+            </label>
+            <input 
+              type="text" 
+              id="regInjuryNote" 
+              placeholder="เช่น ปวดหลังส่วนล่าง, เจ็บเข่าขวา (เว้นว่างได้)"
+              class="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+            <p class="text-[10px] text-slate-500 mt-0.5">* Gemini AI จะนำข้อมูลนี้ไปปรับท่าฝึกให้ปลอดภัยต่อสุขภาพของคุณ</p>
+          </div>
+
+          <div id="registerErrorMsg" class="hidden p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
+            <span>⚠️</span>
+            <span id="registerErrorText">ข้อผิดพลาดในการลงทะเบียน</span>
+          </div>
+
+          <div class="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs flex items-start gap-2">
+            <span>💡</span>
+            <p>
+              สมัครสมาชิกได้ทันทีโดยไม่ต้องใช้บัตร NFC ล่วงหน้า! เมื่อสมัครแล้วสามารถไปรับและผูกบัตร NFC ได้ที่เคาน์เตอร์ยิม
+            </p>
+          </div>
+
+          <button 
+            type="submit" 
+            id="registerSubmitBtn"
+            class="w-full py-3 px-4 rounded-xl font-semibold text-sm bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-teal-600/30 transition duration-200 flex items-center justify-center gap-2"
+          >
+            <span>📝 สมัครสมาชิกทันที</span>
+            <span>➔</span>
+          </button>
+        </form>
+
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- SECTION 2: MEMBER DASHBOARD (Shown when logged in) -->
+    <!-- ========================================== -->
+    <section id="dashboardSection" class="hidden space-y-6">
+
+      <!-- Profile Header Banner -->
+      <div class="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/40 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
+        
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative z-10">
+          <div class="flex items-center gap-4">
+            <div id="profileAvatar" class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-3xl font-bold shadow-lg shadow-indigo-600/30 text-white border border-indigo-400/20">
+              👤
+            </div>
+            <div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <h2 id="profileName" class="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                  กำลังโหลด...
+                </h2>
+                <span id="profileUsername" class="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-mono">
+                  @username
+                </span>
+              </div>
+              <div class="flex items-center gap-2 mt-2 flex-wrap">
+                <span id="profileFitnessLevel" class="text-xs px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-medium">
+                  Beginner
+                </span>
+                <span id="profileTargetGoal" class="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+                  🎯 เป้าหมาย: -
+                </span>
+                <span id="profileNfcUid" class="text-[11px] px-2 py-0.5 rounded-md bg-slate-800/80 text-slate-400 font-mono">
+                  NFC_ID: -
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Action Buttons -->
+          <div class="flex items-center gap-2">
+            <button 
+              onclick="openPasswordModal()" 
+              class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs sm:text-sm font-medium transition flex items-center gap-2"
+            >
+              <span>⚙️</span>
+              <span>เปลี่ยนรหัสผ่าน</span>
+            </button>
+            <button 
+              onclick="handleLogout()" 
+              class="px-4 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs sm:text-sm font-medium transition flex items-center gap-1.5"
+            >
+              <span>🚪</span>
+              <span>ออกจากระบบ</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Injury Note Banner (Shown conditionally) -->
+        <div id="injuryBanner" class="hidden mt-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs sm:text-sm flex items-start gap-3">
+          <span class="text-lg leading-none mt-0.5">⚠️</span>
+          <div>
+            <span class="font-bold">ข้อจำกัดทางร่างกาย / ประวัติการบาดเจ็บ:</span>
+            <p id="injuryNoteText" class="mt-0.5 text-amber-300/90 font-normal">-</p>
+            <p class="text-[11px] text-amber-400/70 mt-1">* Gemini AI จะนำเงื่อนไขนี้ไปออกแบบท่าฝึกเพื่อความปลอดภัยสูงสุดของคุณ</p>
+          </div>
+        </div>
+
+        <!-- Pending NFC Card Notice (Shown when user has not bound a card yet) -->
+        <div id="pendingCardNotice" class="hidden mt-6 p-4 rounded-2xl bg-gradient-to-r from-amber-500/20 via-orange-500/10 to-amber-500/20 border border-amber-500/40 text-amber-100 text-xs sm:text-sm flex items-start gap-3.5 shadow-lg">
+          <span class="text-2xl leading-none">💳</span>
+          <div class="flex-1">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-amber-300 text-sm">ยังไม่ได้ผูกบัตร NFC กับเครื่องเล่น</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase font-mono">Pending NFC</span>
+            </div>
+            <p class="mt-1 text-slate-300 leading-relaxed">
+              ยินดีต้อนรับสู่ Smart Gym! บัญชีของคุณพร้อมใช้งานแล้ว คุณสามารถวางแผนและดูตารางฝึกจาก AI ได้ทันที 
+              <br class="hidden sm:inline">
+              <span class="text-amber-200 font-medium">👉 เมื่อมาถึงยิม: แจ้งเจ้าหน้าที่ที่เคาน์เตอร์เพื่อแตะผูกบัตร NFC กับบัญชีของคุณ</span> เพียงครั้งเดียวเพื่อเริ่มแตะใช้งานเครื่องเล่น
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Dashboard Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left/Center Column (2 Cols on desktop): AI Routine & Workout Logging -->
+        <div class="lg:col-span-2 space-y-6">
+
+          <!-- 1. AI Routine Card -->
+          <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-xl relative overflow-hidden">
+            <div class="flex items-center justify-between mb-5">
+              <div class="flex items-center gap-2.5">
+                <span class="text-xl">🤖</span>
+                <h3 class="font-bold text-base sm:text-lg text-white">ตารางฝึกจาก Gemini AI วันนี้</h3>
+              </div>
+              <span class="text-xs px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                Personalized AI
+              </span>
+            </div>
+
+            <!-- Dynamic Routine Content -->
+            <div id="aiRoutineList" class="space-y-4">
+              <!-- Rendered via JS -->
+              <div class="p-8 text-center text-slate-500 text-sm">
+                กำลังโหลดแผนการฝึก...
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Quick Log Workout Card -->
+          <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-xl">
+            <div class="flex items-center justify-between mb-5">
+              <div class="flex items-center gap-2.5">
+                <span class="text-xl">📝</span>
+                <h3 class="font-bold text-base sm:text-lg text-white">บันทึกผลการเล่นจริง (Log Session)</h3>
+              </div>
+              <span class="text-xs text-slate-400">อัปเดตเพื่อ Overload ครั้งถัดไป</span>
+            </div>
+
+            <form id="logWorkoutForm" onsubmit="handleLogWorkout(event)" class="space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-medium text-slate-400 mb-1">สถานีเครื่องเล่น</label>
+                  <select 
+                    id="logStationSelect" 
+                    required 
+                    class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <!-- Populated by JS -->
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-400 mb-1">ชื่อท่าฝึก</label>
+                  <input 
+                    type="text" 
+                    id="logExerciseInput" 
+                    required 
+                    placeholder="เช่น Chest Press"
+                    class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                </div>
+              </div>
+
+              <div class="grid grid-cols-3 gap-3">
+                <div>
+                  <label class="block text-xs font-medium text-slate-400 mb-1">น้ำหนัก (kg)</label>
+                  <input 
+                    type="number" 
+                    step="0.5" 
+                    id="logWeightInput" 
+                    required 
+                    placeholder="25"
+                    class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-400 mb-1">จำนวนเซ็ต</label>
+                  <input 
+                    type="number" 
+                    id="logSetsInput" 
+                    required 
+                    value="3" 
+                    class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-400 mb-1">เรป/เซ็ต</label>
+                  <input 
+                    type="number" 
+                    id="logRepsInput" 
+                    required 
+                    value="10" 
+                    class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                </div>
+              </div>
+
+              <button 
+                type="submit" 
+                class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs sm:text-sm transition flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/20"
+              >
+                <span>💾</span>
+                <span>บันทึกผลการออกกำลังกาย</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- 3. Workout History Timeline -->
+          <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-xl">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-2">
+                <span class="text-xl">📊</span>
+                <h3 class="font-bold text-base sm:text-lg text-white">ประวัติการฝึกย้อนหลัง</h3>
+              </div>
+              <span id="totalWorkoutBadge" class="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+                0 ครั้ง
+              </span>
+            </div>
+
+            <div id="workoutHistoryList" class="space-y-3">
+              <!-- Rendered via JS -->
+              <p class="text-xs text-slate-500 text-center py-6">ยังไม่มีประวัติการฝึก</p>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right Column: Live Gym Stations Widget -->
+        <div class="space-y-6">
+          <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-xl sticky top-24">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-2">
+                <span class="text-lg">🏋️‍♂️</span>
+                <h3 class="font-bold text-sm sm:text-base text-white">สถานะเครื่องเล่นในยิม</h3>
+              </div>
+              <span class="text-[11px] text-emerald-400 animate-pulse flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Live
+              </span>
+            </div>
+            <p class="text-xs text-slate-400 mb-4">
+              ตรวจสอบความว่างของเครื่องเล่นก่อนเดินไปใช้งาน
+            </p>
+
+            <div id="gymStationsWidgetList" class="space-y-2.5">
+              <!-- Populated by JS -->
+              <div class="text-center py-6 text-xs text-slate-500">
+                กำลังดึงข้อมูลเครื่องเล่น...
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- MODAL: CHANGE PASSWORD -->
+  <!-- ========================================== -->
+  <div id="passwordModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-7 shadow-2xl relative">
+      <div class="flex items-center justify-between mb-5">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">⚙️</span>
+          <h3 class="font-bold text-lg text-white">เปลี่ยนรหัสผ่าน</h3>
+        </div>
+        <button onclick="closePasswordModal()" class="text-slate-400 hover:text-white text-lg p-1">
+          ✕
+        </button>
+      </div>
+
+      <form id="changePasswordForm" onsubmit="handleChangePassword(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">รหัสผ่านเดิม</label>
+          <input 
+            type="password" 
+            id="oldPasswordInput" 
+            required 
+            placeholder="กรอกรหัสผ่านปัจจุบัน"
+            class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">รหัสผ่านใหม่ (อย่างน้อย 4 ตัวอักษร)</label>
+          <input 
+            type="password" 
+            id="newPasswordInput" 
+            required 
+            minlength="4" 
+            placeholder="ตั้งรหัสผ่านใหม่"
+            class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">ยืนยันรหัสผ่านใหม่</label>
+          <input 
+            type="password" 
+            id="confirmPasswordInput" 
+            required 
+            minlength="4" 
+            placeholder="พิมพ์รหัสผ่านใหม่อีกครั้ง"
+            class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+        </div>
+
+        <div id="passwordModalError" class="hidden p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs">
+          ข้อผิดพลาด
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 pt-2">
+          <button 
+            type="button" 
+            onclick="closePasswordModal()" 
+            class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition"
+          >
+            ยกเลิก
+          </button>
+          <button 
+            type="submit" 
+            id="savePasswordBtn"
+            class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/30 transition"
+          >
+            บันทึกรหัสผ่านใหม่
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Scripts -->
+  <script src="/static/user.js"></script>
+</body>
+</html>

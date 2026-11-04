@@ -4,11 +4,11 @@
 #include <ArduinoJson.h>
 
 // --- ตั้งค่า Wi-Fi ---
-const char* ssid = "YOUR_WIFI_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
+const char* ssid = "Pluem";
+const char* password = "plume007";
 
 // --- ตั้งค่าปลายทาง Server (Raspberry Pi) ---
-const char* server_url = "http://YOUR_SERVER_IP:8000/api/get-routine";
+const char* server_url = "http://172.20.10.2:8000/api/get-routine";
 const char* current_station_id = "STATION_CHEST_PRESS";
 
 // กำหนดพิน UART สำหรับ HardwareSerial (Serial2) บน ESP32

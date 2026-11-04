@@ -1,7 +1,7 @@
 import os
 import sqlite3
 from datetime import date
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 
 # Root directory of the smart_gym project
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -84,29 +84,70 @@ class GymDatabase:
                 UNIQUE(user_id, station_id, routine_date)
             );
         """)
+
+        # Migration: Ensure username and password columns exist in users table
+        self.cursor.execute("PRAGMA table_info(users)")
+        existing_cols = [col[1] for col in self.cursor.fetchall()]
+        if "username" not in existing_cols:
+            self.cursor.execute("ALTER TABLE users ADD COLUMN username TEXT")
+        if "password" not in existing_cols:
+            self.cursor.execute("ALTER TABLE users ADD COLUMN password TEXT DEFAULT '1234'")
+
+        # Populate username and default password for existing users if empty
+        self.cursor.execute("SELECT user_id, name, username, password FROM users")
+        for u in self.cursor.fetchall():
+            uid = u["user_id"]
+            uname = u["username"]
+            upass = u["password"]
+            needs_update = False
+            new_uname = uname
+            new_upass = upass or "1234"
+            if not uname:
+                base_name = u["name"].strip().lower().replace(" ", "_")
+                new_uname = base_name if base_name else f"user_{uid}"
+                needs_update = True
+            if not upass:
+                needs_update = True
+            if needs_update:
+                self.cursor.execute(
+                    "UPDATE users SET username = ?, password = ? WHERE user_id = ?",
+                    (new_uname, new_upass, uid)
+                )
+
         self.conn.commit()
 
     # ==========================================
-    # USER METHODS
+    # USER METHODS & AUTH
     # ==========================================
 
     def add_user(
         self,
-        nfc_uid: str,
+        nfc_uid: Optional[str],
         name: str,
         fitness_level: str,
         target_goal: str,
         injury_note: Optional[str] = None,
-        gender: Optional[str] = None
+        gender: Optional[str] = None,
+        username: Optional[str] = None,
+        password: Optional[str] = "1234"
     ) -> Optional[int]:
         """Register a new user. Returns user_id on success, or None on failure."""
-        if not all([nfc_uid, name, fitness_level, target_goal]):
+        if not all([name, fitness_level, target_goal]):
             return None
+        import secrets
+        clean_nfc = nfc_uid.strip().upper() if (nfc_uid and nfc_uid.strip()) else f"PENDING_{secrets.token_hex(4).upper()}"
+        clean_username = username.strip().lower() if username else name.strip().lower().replace(" ", "_")
+        clean_password = password if password else "1234"
         try:
+            # Check if username already exists
+            self.cursor.execute("SELECT user_id FROM users WHERE lower(username) = ?", (clean_username,))
+            if self.cursor.fetchone():
+                return None
+
             self.cursor.execute("""
-                INSERT INTO users (nfc_uid, name, fitness_level, target_goal, injury_note, gender)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (nfc_uid, name, fitness_level, target_goal, injury_note, gender))
+                INSERT INTO users (nfc_uid, name, fitness_level, target_goal, injury_note, gender, username, password)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (clean_nfc, name, fitness_level, target_goal, injury_note, gender, clean_username, clean_password))
             self.conn.commit()
             return self.cursor.lastrowid
         except sqlite3.Error as e:
@@ -114,17 +155,117 @@ class GymDatabase:
             print(f"Database Error (add_user): {e}")
             return None
 
+    def authenticate_user(self, username: str, password: str) -> Optional[Dict[str, Any]]:
+        """Validate username/name and password. Returns user dict without password if valid, else None."""
+        clean_user = username.strip().lower()
+        self.cursor.execute("""
+            SELECT user_id, nfc_uid, name, username, fitness_level, target_goal, injury_note, gender, password
+            FROM users 
+            WHERE lower(username) = ? OR lower(name) = ?
+        """, (clean_user, clean_user))
+        row = self.cursor.fetchone()
+        if not row:
+            return None
+        
+        user_dict = dict(row)
+        stored_password = user_dict.get("password") or "1234"
+        if stored_password == password:
+            user_dict.pop("password", None)
+            return user_dict
+        return None
+
+    def change_user_password(self, user_id: int, old_password: str, new_password: str) -> Tuple[bool, str]:
+        """Change user password after verifying old password."""
+        if not new_password or len(new_password) < 4:
+            return False, "รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 4 ตัวอักษร"
+            
+        self.cursor.execute("SELECT password FROM users WHERE user_id = ?", (user_id,))
+        row = self.cursor.fetchone()
+        if not row:
+            return False, "ไม่พบข้อมูลผู้ใช้งาน"
+            
+        stored_pass = row["password"] or "1234"
+        if stored_pass != old_password:
+            return False, "รหัสผ่านเดิมไม่ถูกต้อง"
+            
+        try:
+            self.cursor.execute("UPDATE users SET password = ? WHERE user_id = ?", (new_password, user_id))
+            self.conn.commit()
+            return True, "เปลี่ยนรหัสผ่านสำเร็จ"
+        except sqlite3.Error as e:
+            self.conn.rollback()
+            return False, f"Database Error: {e}"
+
+    def get_user_summary(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """Retrieve complete dashboard summary for user: profile, today's routines, and recent history."""
+        user = self.get_user_by_id(user_id)
+        if not user:
+            return None
+        user.pop("password", None)
+        
+        # 1. Today's AI routines
+        self.cursor.execute("""
+            SELECT c.*, s.station_name, s.target_muscles
+            FROM daily_routines_cache c
+            JOIN stations s ON c.station_id = s.station_id
+            WHERE c.user_id = ?
+            ORDER BY c.cache_id DESC
+        """, (user_id,))
+        routines = [dict(r) for r in self.cursor.fetchall()]
+        
+        # 2. Recent workout history (last 5)
+        self.cursor.execute("""
+            SELECT h.*, s.station_name, s.target_muscles
+            FROM workout_history h
+            LEFT JOIN stations s ON h.station_id = s.station_id
+            WHERE h.user_id = ?
+            ORDER BY h.log_id DESC
+            LIMIT 5
+        """, (user_id,))
+        recent_history = [dict(h) for h in self.cursor.fetchall()]
+        
+        # 3. Total workout count
+        self.cursor.execute("SELECT COUNT(*) as count FROM workout_history WHERE user_id = ?", (user_id,))
+        total_count = self.cursor.fetchone()["count"]
+        
+        return {
+            "user": user,
+            "today_routines": routines,
+            "recent_history": recent_history,
+            "total_workouts": total_count
+        }
+
+    def get_user_workout_history(self, user_id: int, limit: int = 50) -> List[Dict[str, Any]]:
+        """Get full workout history for user."""
+        self.cursor.execute("""
+            SELECT h.*, s.station_name, s.target_muscles
+            FROM workout_history h
+            LEFT JOIN stations s ON h.station_id = s.station_id
+            WHERE h.user_id = ?
+            ORDER BY h.timestamp DESC, h.log_id DESC
+            LIMIT ?
+        """, (user_id, limit))
+        return [dict(r) for r in self.cursor.fetchall()]
+
     def get_user_by_nfc(self, nfc_uid: str) -> Optional[Dict[str, Any]]:
         """Fetch user profile using their physical NFC card UID."""
         self.cursor.execute("SELECT * FROM users WHERE nfc_uid = ?", (nfc_uid,))
         row = self.cursor.fetchone()
-        return dict(row) if row else None
+        if not row:
+            return None
+        d = dict(row)
+        d.pop("password", None)
+        return d
 
     def get_user_by_id(self, user_id: int) -> Optional[Dict[str, Any]]:
         """Fetch user profile by internal user_id."""
         self.cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
         row = self.cursor.fetchone()
-        return dict(row) if row else None
+        if not row:
+            return None
+        d = dict(row)
+        d.pop("password", None)
+        return d
 
     # ==========================================
     # STATION METHODS
@@ -224,15 +365,25 @@ class GymDatabase:
         fitness_level: str,
         target_goal: str,
         injury_note: Optional[str] = None,
-        gender: Optional[str] = None
+        gender: Optional[str] = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None
     ) -> bool:
         """Update an existing user's information."""
         try:
-            self.cursor.execute("""
-                UPDATE users 
-                SET nfc_uid = ?, name = ?, fitness_level = ?, target_goal = ?, injury_note = ?, gender = ?
-                WHERE user_id = ?
-            """, (nfc_uid, name, fitness_level, target_goal, injury_note, gender, user_id))
+            clean_username = username.strip().lower() if username else name.strip().lower().replace(" ", "_")
+            if password and password.strip():
+                self.cursor.execute("""
+                    UPDATE users 
+                    SET nfc_uid = ?, name = ?, fitness_level = ?, target_goal = ?, injury_note = ?, gender = ?, username = ?, password = ?
+                    WHERE user_id = ?
+                """, (nfc_uid, name, fitness_level, target_goal, injury_note, gender, clean_username, password, user_id))
+            else:
+                self.cursor.execute("""
+                    UPDATE users 
+                    SET nfc_uid = ?, name = ?, fitness_level = ?, target_goal = ?, injury_note = ?, gender = ?, username = ?
+                    WHERE user_id = ?
+                """, (nfc_uid, name, fitness_level, target_goal, injury_note, gender, clean_username, user_id))
             self.conn.commit()
             return True
         except sqlite3.Error as e:
@@ -265,8 +416,8 @@ class GymDatabase:
         """Log a completed exercise session to the database."""
         try:
             self.cursor.execute("""
-                INSERT INTO workout_history (user_id, station_id, exercise_name, weight_kg, sets_completed, reps_completed)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO workout_history (user_id, station_id, exercise_name, weight_kg, sets_completed, reps_completed, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
             """, (user_id, station_id, exercise_name, weight_kg, sets, reps))
             self.conn.commit()
             return True
