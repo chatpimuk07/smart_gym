@@ -7,7 +7,9 @@ A lightweight FastAPI backend designed for microcontrollers (such as ESP32) equi
 ## 🌟 Key Features
 
 - 💳 **NFC Card Identification**: Instantly authenticates gym members using physical NFC tag/card UIDs.
-- 🤖 **Gemini AI Workout Routine**: Generates tailored training plans and concise safety cues based on user fitness levels, primary goals, and physical limitations or injuries.
+- 🤖 **Gemini AI Workout Routine**: Generates tailored training plans and concise safety cues based on user fitness levels, primary goals, and physical limitations or injuries (supports on-station ESP32 tap and on-demand web generation).
+- 📱 **Real-time Member Web Portal**: Responsive dashboard for members to view personalized AI routines, check station availability in real-time, log completed sets/reps, and monitor workout history.
+- 🔄 **Real-time Synchronized Updates**: Auto-syncs live station check-in/checkout status and newly generated workout routines to member dashboards every 4 seconds without manual refresh.
 - 📊 **Progressive Overload Tracking**: Queries historical workout data from SQLite to systematically suggest weight and rep progression.
 - ⚡ **Daily Routine Caching**: Caches AI-generated responses per user per station for the current calendar day, preventing redundant LLM calls on repeated card taps.
 - 🏥 **Safety & Injury Safeguards**: Enforces safety constraints in the prompt context to keep training recommendations aligned with user injury restrictions.
@@ -27,16 +29,19 @@ smart_gym/
 │   ├── seed_mock_data.py   # Seed script for initial test data
 │   └── test_nfc.py         # Standalone NFC hardware reader test tool
 ├── static/                 # Frontend assets (CSS & JS)
-│   ├── admin.js
-│   ├── stations.js
-│   ├── stations.css
-│   └── style.css
+│   ├── admin.js            # Admin portal controller
+│   ├── stations.js         # Station overview controller
+│   ├── stations.css        # Station styling
+│   ├── style.css           # Global custom styles
+│   ├── user.css            # Member portal responsive styles
+│   └── user.js             # Member portal controller (Real-time sync, AI generation, Auth)
 ├── templates/              # HTML templates (Web Dashboards)
-│   ├── admin.html
-│   └── stations.html
+│   ├── admin.html          # Gym Administrator portal
+│   ├── stations.html       # Public gym station status display
+│   └── user.html           # Member dashboard & self-service portal
 ├── esp32/                  # ESP32 firmware source code (PlatformIO)
-│   ├── src/station.ino
-│   └── platformio.ini
+│   ├── src/station.ino     # NFC reader & HTTP client routine fetcher
+│   └── platformio.ini      # PlatformIO configuration
 ├── main.py                 # FastAPI entry point & API routes
 ├── requirements.txt        # Python package dependencies
 ├── .env.example            # Environment variables template
@@ -89,8 +94,8 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 ## 🔌 API Documentation
 
-### `POST /api/get-routine`
-Fetches or generates a personalized workout plan for a user tapping an NFC card at a specific station.
+### 1. `POST /api/get-routine` (Hardware Tap)
+Fetches or generates a personalized workout plan when a member taps their NFC card at an ESP32 gym station. Handles check-in and check-out toggling.
 
 #### Request Body:
 ```json
@@ -110,3 +115,30 @@ Fetches or generates a personalized workout plan for a user tapping an NFC card 
   "tip": "Keep elbows slightly tucked and avoid deep shoulder flare."
 }
 ```
+
+### 2. `POST /api/user/generate-routine` (Web Portal On-Demand)
+Generates an AI workout routine directly from the Member Web Portal without requiring a physical card tap.
+
+#### Request Body:
+```json
+{
+  "user_id": 19,
+  "station_id": "STATION_LAT_PULLDOWN"
+}
+```
+
+#### Response:
+```json
+{
+  "user": "Sun",
+  "exercise": "Cable Lat Pulldown",
+  "target": "3 Sets x 12-15 Reps",
+  "weight": "20 kg",
+  "tip": "Drive elbows down and bring the bar toward your upper chest without swinging."
+}
+```
+
+### 3. Web Dashboard Endpoints
+- `GET /` — Gym Station Live Status Monitor (`stations.html`)
+- `GET /user` — Member Portal Dashboard (`user.html`)
+- `GET /admin` — Administrator & Member Management (`admin.html`)

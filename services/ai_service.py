@@ -61,7 +61,7 @@ class GymAIService:
         prompt = self._build_prompt(user, station, last_history)
         
         # ลองโมเดลหลักก่อน และมีโมเดลสำรองเผื่อกรณีที่โมเดลใดโมเดลหนึ่งติด Overloaded/503
-        candidate_models = [self.model_name]
+        candidate_models = [self.model_name, "gemini-3.5-flash"]
         if self.model_name != "gemini-3.1-flash-lite":
             candidate_models.append("gemini-3.1-flash-lite")
 

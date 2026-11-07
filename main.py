@@ -44,6 +44,11 @@ class RoutineRequest(BaseModel):
     station_id: str
 
 
+class WebRoutineRequest(BaseModel):
+    user_id: int
+    station_id: str
+
+
 class UserPayload(BaseModel):
     nfc_uid: Optional[str] = None
     name: str
@@ -346,6 +351,26 @@ def log_user_workout_endpoint(payload: LogWorkoutPayload):
     if not success:
         raise HTTPException(status_code=400, detail="Failed to log workout session")
     return {"status": "success"}
+
+
+@app.post("/api/user/generate-routine")
+def user_generate_routine_endpoint(req: WebRoutineRequest):
+    """สมาชิกกดขอคำแนะนำ AI ผ่านหน้าเว็บโดยตรง"""
+    user = db.get_user_by_id(req.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    station = db.get_station(req.station_id)
+    if not station:
+        raise HTTPException(status_code=404, detail="Station not found")
+
+    last_history = db.get_last_workout(user["user_id"], req.station_id)
+    ai_json = ai.generate_routine(
+        dict(user),
+        dict(station),
+        dict(last_history) if last_history else None
+    )
+    db.save_cached_routine(user["user_id"], req.station_id, ai_json)
+    return Response(content=ai_json, media_type="application/json")
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ const char* ssid = "Pluem";
 const char* password = "plume007";
 
 // --- ตั้งค่าปลายทาง Server (Raspberry Pi) ---
-const char* server_url = "http://172.20.10.2:8000/api/get-routine";
+const char* server_url = "http://172.20.10.5:8000/api/get-routine";
 const char* current_station_id = "STATION_CHEST_PRESS";
 
 // กำหนดพิน UART สำหรับ HardwareSerial (Serial2) บน ESP32

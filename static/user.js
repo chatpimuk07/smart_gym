@@ -10,8 +10,13 @@ let stationPollInterval = null;
 document.addEventListener('DOMContentLoaded', () => {
   checkAuthSession();
   fetchGymStations();
-  // อัปเดตสถานะเครื่องเล่นทุกๆ 4 วินาที
-  stationPollInterval = setInterval(fetchGymStations, 4000);
+  // อัปเดตสถานะเครื่องเล่นและ Dashboard สมาชิกทุกๆ 4 วินาที (Real-time Sync)
+  stationPollInterval = setInterval(() => {
+    fetchGymStations();
+    if (currentUser && currentUser.user_id) {
+      loadUserDashboard(currentUser.user_id);
+    }
+  }, 4000);
 });
 
 /**
@@ -325,8 +330,17 @@ function renderAiRoutines(routines) {
         <div class="text-3xl mb-2">💡</div>
         <p class="text-sm font-semibold text-slate-300">ยังไม่มีตารางฝึกที่บันทึกไว้ในวันนี้</p>
         <p class="text-xs text-slate-400 mt-1 max-w-md mx-auto">
-          เมื่อคุณนำบัตร NFC ไปแตะที่เครื่องเล่นในยิม ระบบ Gemini AI จะวิเคราะห์และสร้างแผนการฝึกให้คุณทันที และจะปรากฏที่นี่แบบเรียลไทม์!
+          เมื่อคุณนำบัตร NFC ไปแตะที่เครื่องเล่นในยิม หรือกดปุ่มด้านล่างเพื่อสร้างแผนการฝึกจาก Gemini AI ได้ทันที
         </p>
+        <button 
+          type="button" 
+          onclick="requestAiRoutineFromWeb()" 
+          id="btnGenAiRoutine"
+          class="mt-4 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/30 transition inline-flex items-center gap-1.5"
+        >
+          <span>🤖</span>
+          <span>สร้างคำแนะนำจาก AI ทันที</span>
+        </button>
       </div>
     `;
     return;
@@ -384,6 +398,37 @@ function renderAiRoutines(routines) {
       </div>
     `;
   }).join('');
+}
+
+/**
+ * ขอคำแนะนำจาก AI ผ่านหน้าเว็บโดยตรง
+ */
+async function requestAiRoutineFromWeb() {
+  if (!currentUser || !currentUser.user_id) return;
+  const selectElem = document.getElementById('logStationSelect');
+  const stationId = selectElem && selectElem.value ? selectElem.value : (stationsCache[0] ? stationsCache[0].station_id : 'STATION_CHEST_PRESS');
+  const btn = document.getElementById('btnGenAiRoutine');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳</span><span>กำลังวิเคราะห์แผนการฝึก...</span>';
+  }
+  try {
+    const res = await fetch('/api/user/generate-routine', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: currentUser.user_id, station_id: stationId })
+    });
+    if (!res.ok) throw new Error('ไม่สามารถสร้างแผนการฝึกได้');
+    showToast('สร้างแผนการฝึกจาก AI เรียบร้อย! 🎉', 'success');
+    await loadUserDashboard(currentUser.user_id);
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<span>🤖</span><span>สร้างคำแนะนำจาก AI ทันที</span>';
+    }
+  }
 }
 
 /**
